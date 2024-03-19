@@ -53,8 +53,6 @@ function custom_plugin_init_script() {
 }
 add_action('wp_footer', 'custom_plugin_init_script');
 
-
-
 // Function to generate latest posts carousel shortcode
 function latest_posts_carousel_shortcode($atts) {
     // Check if we are in the Elementor editor
@@ -75,8 +73,19 @@ function latest_posts_carousel_shortcode($atts) {
     $args = array(
         'post_type' => 'post',
         'posts_per_page' => $atts['count'], // Number of posts to display
-        'category_name' => $atts['exclude_category'], // Exclude posts by category slug
     );
+
+    // Exclude posts by category slug if specified
+    if (!empty($atts['exclude_category'])) {
+        $args['tax_query'] = array(
+            array(
+                'taxonomy' => 'category',
+                'field'    => 'slug',
+                'terms'    => explode(",", $atts['exclude_category']),
+                'operator' => 'NOT IN',
+            ),
+        );
+    }
 
     $posts_query = new WP_Query($args);
 
@@ -86,6 +95,11 @@ function latest_posts_carousel_shortcode($atts) {
         <div class="owl-carousel custom-carousel owl-theme">
             <?php while ($posts_query->have_posts()) : $posts_query->the_post(); ?>
                 <?php 
+                // Check if the post belongs to the excluded category, and skip it
+                if (in_category($atts['exclude_category'])) {
+                    continue;
+                }
+
                 // Get the featured image URL, if available, else fallback image
                 $featured_image_url = (has_post_thumbnail()) ? get_the_post_thumbnail_url(get_the_ID(), 'large') : $atts['fallback_image'];
                 ?>
@@ -107,6 +121,10 @@ function latest_posts_carousel_shortcode($atts) {
     return ob_get_clean();
 }
 add_shortcode('latest_posts_carousel', 'latest_posts_carousel_shortcode');
+
+
+
+
 
 
 
@@ -140,4 +158,3 @@ function custom_plugin_add_menu() {
 
 // Hook to add the settings page
 add_action('admin_menu', 'custom_plugin_add_menu');
-
